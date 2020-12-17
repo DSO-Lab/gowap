@@ -22,6 +22,7 @@ type collyData struct {
 	html    string
 	headers map[string][]string
 	scripts []string
+	urls 	[]string
 	cookies map[string]string
 }
 
@@ -43,7 +44,7 @@ type application struct {
 	Implies  interface{}            `json:"implies,omitempty"`
 	Meta     map[string]interface{} `json:"meta,omitempty"`
 	Scripts  interface{}            `json:"script,omitempty"`
-	URL      string                 `json:"url,omitempty"`
+	URLs      interface{}            `json:"url,omitempty"`
 	Website  string                 `json:"website,omitempty"`
 }
 
@@ -63,6 +64,7 @@ type Wappalyzer struct {
 
 // Init initializes wappalyzer
 func Init(appsJSONPath string, JSON bool) (wapp *Wappalyzer, err error) {
+
 	wapp = &Wappalyzer{}
 	wapp.Transport = &http.Transport{
 		DialContext: (&net.Dialer{
@@ -163,7 +165,10 @@ func (wapp *Wappalyzer) Analyze(url string) (result interface{}, err error) {
 	}
 
 	for _, app := range wapp.Apps {
-		analyzeURL(app, url, &detectedApplications)
+		if app.URLs !=nil{
+			analyzeURL(app, scraped.urls, &detectedApplications)
+		}
+		
 		if app.HTML != nil {
 			analyzeHTML(app, scraped.html, &detectedApplications)
 		}
@@ -200,15 +205,19 @@ func (wapp *Wappalyzer) Analyze(url string) (result interface{}, err error) {
 	return res, nil
 }
 
-func analyzeURL(app *application, url string, detectedApplications *map[string]*resultApp) {
-	patterns := parsePatterns(app.URL)
+func analyzeURL(app *application, urls []string, detectedApplications *map[string]*resultApp) {
+	patterns := parsePatterns(app.URLs)
 	for _, v := range patterns {
 		for _, pattrn := range v {
-			if pattrn.regex != nil && pattrn.regex.Match([]byte(url)) {
-				if _, ok := (*detectedApplications)[app.Name]; !ok {
-					resApp := &resultApp{app.Name, app.Version, app.Categories, app.Excludes, app.Implies}
-					(*detectedApplications)[resApp.Name] = resApp
-					detectVersion(resApp, pattrn, &url)
+			if pattrn.regex != nil {
+				for _, url := range urls {
+					if pattrn.regex.Match([]byte(url)) {
+						if _, ok := (*detectedApplications)[app.Name]; !ok {
+							resApp := &resultApp{app.Name, app.Version, app.Categories, app.Excludes, app.Implies}
+							(*detectedApplications)[resApp.Name] = resApp
+							detectVersion(resApp, pattrn, &url)
+						}
+					}
 				}
 			}
 		}
