@@ -1,4 +1,4 @@
-module github.com/unstppbl/gowap
+module github.com/DSO-Lab/gowap
 
 go 1.13
 
